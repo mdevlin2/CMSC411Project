@@ -53,6 +53,7 @@ extern inline void cordic(int* x, int* y, int* z, cordic_mode mode) {
 			*y = *y + (x_temp >> i);
 			*z = *z - elem_angle[i];
 		}
+                printf("%d %d %d\n", *x, *y, *z);
 	}
 }
 
@@ -137,9 +138,10 @@ extern inline double sin_cordic(int angle) {
 	int x = 1;
 	int y = 0;
 	int z = angle;
-
+        
 	cordic(&x,&y,&z,ROTATIONAL);
-
+        printf("z: %d\n", y);
+        printf("ans: %g\n", fixed_to_float((double)y));
 	return fixed_to_float((double)y) / SCALE_CONSTANT;
 }
 
