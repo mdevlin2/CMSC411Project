@@ -1,175 +1,51 @@
+
+#include <math.h> // for testing only!
 #include <stdlib.h>
 #include <stdio.h>
-#include "define.h"
 
-extern inline double fixed_to_float(int fixed) {
-	return fixed / FLOAT_SHIFT;
+#define cordic_1K 0x26DD3B6A
+#define half_pi 0x6487ED51
+#define MUL 1073741824.000000
+#define CORDIC_NTAB 32
+int cordic_ctab [] = {0x3243F6A8, 0x1DAC6705, 0x0FADBAFC, 0x07F56EA6, 0x03FEAB76, 0x01FFD55B, 
+0x00FFFAAA, 0x007FFF55, 0x003FFFEA, 0x001FFFFD, 0x000FFFFF, 0x0007FFFF, 0x0003FFFF, 
+0x0001FFFF, 0x0000FFFF, 0x00007FFF, 0x00003FFF, 0x00001FFF, 0x00000FFF, 0x000007FF, 
+0x000003FF, 0x000001FF, 0x000000FF, 0x0000007F, 0x0000003F, 0x0000001F, 0x0000000F, 
+0x00000008, 0x00000004, 0x00000002, 0x00000001, 0x00000000, };
+
+void cordic(int theta, int *s, int *c, int n)
+{
+	int k, d, tx, ty, tz;
+	int x=cordic_1K,y=0,z=theta;
+	n = (n>CORDIC_NTAB) ? CORDIC_NTAB : n;
+	for (k=0; k<n; ++k)
+	{
+		d = z>>31;
+		//get sign. for other architectures, you might want to use the more portable version
+		//d = z>=0 ? 0 : -1;
+		tx = x - (((y>>k) ^ d) - d);
+		ty = y + (((x>>k) ^ d) - d);
+		tz = z - ((cordic_ctab[k] ^ d) - d);
+		x = tx; y = ty; z = tz;
+	}  
+	*c = x; *s = y;
 }
 
-extern inline int float_to_fixed(double float_number) {
-	return (int)(float_number * BASE_SHIFT);
-}
-
-extern inline int sign_decision(cordic_mode mode, int val) {
-
-	int result;
-
-	if (val < 0) {
-		result = 1;
-	} else {
-		result = 0;
-	}
-
-	if (mode == ROTATIONAL) {
-		return result;
-	} else {
-		return !result;
-	}
-}
-
-extern inline void cordic(int* x, int* y, int* z, cordic_mode mode) {
-	
-	int* val;
-	int x_temp;
-
-	if (mode == ROTATIONAL) {
-		val = z;
-	} else {
-		val = y;
-	}
-
-	*x = *x << SHIFT;
-	*y = *y << SHIFT;
-	*z = *z << SHIFT;
-
-	for (int i = 0; i < PRECISION; i++) {
-		x_temp = *x;
-		if (sign_decision(mode, *val)) {
-			*x = *x + (*y >> i);
-			*y = *y - (x_temp >> i);
-			*z = *z + elem_angle[i];
-		} else {
-			*x = *x - (*y >> i);
-			*y = *y + (x_temp >> i);
-			*z = *z - elem_angle[i];
-		}
-                printf("%d %d %d\n", *x, *y, *z);
-	}
-}
-
-extern inline void cordic_optimized(int* restrict x, int* restrict y, int* restrict z, cordic_mode mode) {
-
-	int *val;
-
-	const int local_elem_angle[] = { 2949120, 1740967, 919789, 466945, 234379, 117304, 58666, 29335, 14668, 7334, 3667, 1833, 917, 458 };
-
-	int x_local = *x;
-	int y_local = *y;
-	int z_local = *z;
-
-	if (mode == ROTATIONAL) {
-		val = &z_local;
-	} else {
-		val = &y_local;
-	}
-
-	x_local = x_local << SHIFT;
-	y_local = y_local << SHIFT;
-	z_local = z_local << SHIFT;
-
-	int x_next, y_next, z_next;
-
-	int i=0;
-	int j=1;
-
-	for (; i < PRECISION; i+=2, j+=2) {
-		
-		if ((*val < 0 && mode == ROTATIONAL) || (*val >= 0 && mode != ROTATIONAL)) {
-			x_next = x_local + (y_local >> i);
-			y_next = y_local - (x_local >> i);
-			z_next = z_local + local_elem_angle[i];
-		} else {
-			x_next = x_local - (y_local >> i);
-			y_next = y_local + (x_local >> i);
-			z_next = z_local - local_elem_angle[i];
-		}
-
-		x_local = x_next; y_local = y_next; z_local = z_next;
-
-		if ((*val < 0 && mode == ROTATIONAL) || (*val >= 0 && mode != ROTATIONAL)) {
-			x_next = x_local + (y_local >> j);
-			y_next = y_local - (x_local >> j);
-			z_next = z_local + local_elem_angle[j];
-		} else {
-			x_next = x_local - (y_local >> j);
-			y_next = y_local + (x_local >> j);
-			z_next = z_local - local_elem_angle[j];
-		}
-		x_local = x_next; y_local = y_next; z_local = z_next;
-
-	}
-	*x = x_local;
-	*y = y_local;
-	*z = z_local;
-}
-
-extern inline int inline_test(int x, int y) {
-
-	int z = x+y;
-
-	//__asm__("add\t%1, %2, %0" : "=r" (z) : "r" (x), "r" (y));
-
-	return z;
-}
-
-extern inline double cos_cordic(int angle) {
-
-	int x = 1;
-	int y = 0;
-	int z = angle;
-
-	cordic(&x,&y,&z,ROTATIONAL);
-
-	return fixed_to_float((double)x) / SCALE_CONSTANT;
-}
-
-extern inline double sin_cordic(int angle) {
-
-	int x = 1;
-	int y = 0;
-	int z = angle;
-        
-	cordic(&x,&y,&z,ROTATIONAL);
-        printf("z: %d\n", y);
-        printf("ans: %g\n", fixed_to_float((double)y));
-	return fixed_to_float((double)y) / SCALE_CONSTANT;
-}
-
-double arctan_x_y_cordic(int x, int y) {
-
-	int x_local = x;
-	int y_local = y;
-	int z_local = 0;
-
-	cordic(&x_local, &y_local, &z_local, VECTORING);
-
-	return 90 - fixed_to_float(z_local);
-}
-
-double arctan_cordic(int xy) {
-
-	int x = 1;
-	int y = xy;
-	int z = 0;
-
-	cordic(&x, &y, &z, VECTORING);
-
-	return fixed_to_float(z);
-}
-
-int main(int argc, char*argv[]) {
-    double ans = sin_cordic(35);
-    printf("%f\n", ans);
-
-    return 0;
+//Print out sin(x) vs fp CORDIC sin(x)
+int main(int argc, char **argv)
+{
+	double p;
+	int s,c;
+	int i;    
+	/*for(i=0;i<50;i++)
+	{
+	    p = (i/50.0)*(3.14159)/2;        
+	    //use 32 iterations
+	    cordic((p*MUL), &s, &c, 32);
+	    //these values should be nearly equal
+	    printf("%d %d\n", s, c);
+	}*/       
+	double rad = ((3.14159)/180) * 60;
+	cordic((rad*MUL), &s, &c, 32);
+	printf("%lf %lf\n", s/MUL, sin(rad));
 }

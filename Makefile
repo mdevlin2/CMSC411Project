@@ -1,13 +1,12 @@
 all: cordic
 
 cordic: cordic.c
-	gcc -std=c99 -g cordic.c
-
-cordic.o: cordic.o
-	gcc -g cordic.o
+	gcc -std=c99 -lm -c cordic.c
+	gcc -lm cordic.o -o run.out
 
 run:
-	./a.out
+	./run.out
 
 clean:
-	rm a.out
+	rm run.out
+	rm cordic.o
