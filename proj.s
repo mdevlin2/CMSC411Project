@@ -5,15 +5,16 @@ main:
     ldr r4, =theta
     ldr r2, =Z
     ldr r3, =MUL
-    mov r5, #0
+    mov r5, #1
     ldr r4, [r4]
     mov r7, r4
+    b mul_loop
 
 main2: 
     ldr r2, =cordic_1k
     ldr r2, [r2]
     mov r3, #0
-    b mul_loop
+    b loop
 
 @ multiply theta by MUL
 mul_loop:
