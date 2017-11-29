@@ -1,14 +1,15 @@
 .data
 cordic_ctab: .word 2097149, 1048575, 524287, 262143, 131071, 65535, 32767, 16383, 8191, 4095, 2047, 1023, 511, 255, 127, 63, 31, 15, 8, 4, 2, 1, 0
 cordic_1k: .word 0x26DD3B6A
-cordic_ntab: .word 23
 MUL: .word 0x4E800000
-PMUL: .word 0
+MULINV: .word 0x307FFFFF
 .L3: .word cordic_ctab
 .L4: .word 652032874
 X: .word 0x00000000
 Y: .word 0x00000000
 Z: .word 0x00000000
+D: .word 0x00000000
+ANS: .word 0x00000000
 theta: .word 0x41F00000             @ 30 degs to rad in ieee754
 deg_convert_const: .word 0x3C8EFA35
 
@@ -53,43 +54,62 @@ main:
     b loop
 
 loop:
+    ldr r6, =Z
+    ldr r4, [r6]
     mov r5, r4, lsr #23
-    sub r5, r5, #22
+    sub r4, r5, #22
     mov r5, r5, lsl #23
-    orr r5, r5, r4
+    orr r4, r5, r4
+    ldr r6, =D
+    str r7, [r6]
+
+    ldr r6, =X
+    ldr r2, [r6]
+    mov r5, r2, lsr #23
+    sub r2, r5, r0
+    mov r5, r5, lsl #23
+    orr r2, r5, r2
+    eor r2, r2, r7
+    sub r2, r2, r7
+    ldr r8, [r6]
+    sub r8, r8, r2
+    str r8, [r6]
+
+    ldr r6, =Y
+    ldr r3, [r6]
+    mov r5, r3, lsr #23
+    sub r5, r5, r0
+    mov r5, r5, lsl #23
+    orr r3, r5, r3
+    eor r3, r3, r7
+    sub r3, r3, r7
+    ldr r8, [r6]
+    add r8, r8, r3
+    str r8, [r6]
+
+    ldr r6, =cordic_ctab
+    ldr r3, =Z
+    mov r8, #4
+    mul r9, r8, r0
+    ldr r4, [r6, r9]
+    eor r4, r4, r7
+    sub r4, r4, r7
+    ldr r8, [r3]
+    sub r8, r8, r4
+    str r8, [r3]
 
     cmp r0, r1
     add r0, r0, #1
     ble loop
 
-
-next:
-    eor r7, r7, r6
-    sub r7, r7, r6
-    sub r5, r2, r7
-
-    mov r7, r3, LSR r1
-    eor r7, r7, r6
-    sub r7, r7, r6
-    add r8, r3, r7
-
-    ldr r7, =cordic_ctab
-    sub r10, r1, #1
-    mov r11, #4
-    mov r12, r11, LSR r10
-    ldr r7, [r7, r12]
-    eor r7, r7, r6
-    sub r7, r7, r6
-    sub r9, r4, r7
-
-    mov r2, r5
-    mov r3, r8
-    mov r4, r9
-
-    cmp r1, r0
-    ble loop
-
-
+finished:
+    ldr r3, =Y
+    ldr r1, [r3]
+    ldr r3, =MULINV
+    ldr r2, [r3]
+    bl multiply_754 
+    ldr r3, =ANS
+    str r0, [r3]
 
 
 @ Multiplicands stored in r1 and r2
