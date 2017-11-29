@@ -1,3 +1,6 @@
 https://www.virag.si/2010/02/simple-division-algorithm-for-arm-assembler/
 http://arantxa.ii.uam.es/~gdrivera/sed/docs/ARMBook.pdf
 	- 6.2.7 64 bit addition
+
+https://github.com/cainarmproject/ieee754-arm
+	- IEEE 754 multiplication and addition

@@ -21,6 +21,7 @@ void cordic(int theta, int *s, int *c, int n)
 	for (k=0; k<n; ++k)
 	{
 		d = z>>31;
+		printf("%g\n", d)
 		//get sign. for other architectures, you might want to use the more portable version
 		//d = z>=0 ? 0 : -1;
 		tx = x - (((y>>k) ^ d) - d);
