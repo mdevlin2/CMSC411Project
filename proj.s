@@ -1,3 +1,65 @@
+
+main:
+    mov r0, #32
+    mov r1, #1
+    ldr r4, =theta
+    ldr r2, =Z
+    ldr r3, =MUL
+    mov r5, #0
+    ldr r4, [r4]
+    mov r7, r4
+
+main2: 
+    ldr r2, =cordic_1k
+    ldr r2, [r2]
+    mov r3, #0
+    b mul_loop
+
+@ multiply theta by MUL
+mul_loop:
+    add r5, r5, #1
+    ldr r6, [r2, #4]
+    ldr r8, [r2]
+    ldr r9, [r3, #4]
+    ldr r10, [r3]
+    adds r11, r6, r9
+    adcs r12, r8, r10
+    str r11, [r2, #4]
+    str r12, [r2]
+    cmp r5, r7
+    ble mul_loop
+    b main2
+
+loop:
+    add r1, r1, #1
+    mov r6, r4, LSR #31
+    mov r7, r2, LSR r1
+    eor r7, r7, r6
+    sub r7, r7, r6
+    sub r5, r2, r7
+
+    mov r7, r3, LSR r1
+    eor r7, r7, r6
+    sub r7, r7, r6
+    add r8, r3, r7
+
+    ldr r7, =cordic_ctab
+    sub r10, r1, #1
+    mov r11, #4
+    mov r12, r11, LSR r10
+    ldr r7, [r7, r12]
+    eor r7, r7, r6
+    sub r7, r7, r6
+    sub r9, r4, r7
+
+    mov r2, r5
+    mov r3, r8
+    mov r4, r9
+
+    cmp r1, r0
+    ble loop
+
+
 cordic_ctab:
     .word 2097149
     .word 1048575
@@ -33,7 +95,7 @@ cordic_ntab:
     .word 23
 
 MUL:
-    .word 1073741824
+    .word 0x00000000, 1073741824
 
 PMUL:
     .word 0
@@ -44,53 +106,11 @@ PMUL:
 .L4:
     .word 652032874
 
-main:
-    mov r0, #32
-    mov r1, #1
-    ldr r2, =cordic_1k
-    ldr r2, [r2]
-    mov r3, #0
-    ldr r4, =theta
-    ldr r4, [r4]
-    mov r5, #1
-    mov r7, #1
-    b mul_loop
+X:
+    .word 0
 
-@ multiply theta by MUL
-mul_loop:
-    add r5, r5, #1
-    ldr r6, =MUL
-    ldr r6, [r6]
-    add r4, r4, r6
-    cmp r5, r7
-    ble mul_loop
-    b loop
+Y:
+    .word 0
 
-loop:
-    add r1, r1, #1
-    mov r6, r4, LSR #31
-    mov r7, r2, LSR r1
-    eor r7, r7, r6
-    sub r7, r7, r6
-    sub r5, r2, r7
-
-    mov r7, r3, LSR r1
-    eor r7, r7, r6
-    sub r7, r7, r6
-    add r8, r3, r7
-
-    ldr r7, =cordic_ctab
-    sub r10, r1, #1
-    mov r11, #4
-    mov r12, r11, LSR r10
-    ldr r7, [r7, r12]
-    eor r7, r7, r6
-    sub r7, r7, r6
-    sub r9, r4, r7
-
-    mov r2, r5
-    mov r3, r8
-    mov r4, r9
-
-    cmp r1, r0
-    ble loop
+Z:
+    .word 0x00000000, 0x00000000
