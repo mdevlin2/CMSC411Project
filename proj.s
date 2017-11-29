@@ -44,13 +44,6 @@ main:
     mov r0, #0                      @ Loop counter
     mov r1, #22                     @ Loop limit
 
-    ldr r2, =X
-    ldr r2, [r2]
-    ldr r3, =Y
-    ldr r3, [r3]
-    ldr r4, =Z
-    ldr r4, [r4]                    @ Load X,Y,Z
-
     b loop
 
 loop:
