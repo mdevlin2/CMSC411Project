@@ -21,7 +21,7 @@ main:
     ldr r0, =deg_convert_const
     ldr r2, [r0]                    @ r2=(PI/180)
     bl multiply_754                  @ Find 30° in rad
-    ldr r1, =theta                      
+    ldr r1, =Z                      
     str r0, [r1]                    @ Store Z value
 
     ldr r0, =MUL
@@ -54,7 +54,7 @@ loop:
     mov r5, r5, lsl #23
     orr r4, r5, r4
     ldr r6, =D
-    str r7, [r6]
+    str r4, [r6]
 
     ldr r6, =X
     ldr r2, [r6]
@@ -90,12 +90,11 @@ loop:
     ldr r8, [r3]
     sub r8, r8, r4
     str r8, [r3]
-
-    cmp r0, r1
+    
     add r0, r0, #1
-    ble loop
+    cmp r0, r1
+    blt loop
 
-finished:
     ldr r3, =Y
     ldr r1, [r3]
     ldr r3, =MULINV
@@ -103,16 +102,17 @@ finished:
     bl multiply_754 
     ldr r3, =ANS
     str r0, [r3]
+    b finished
 
 
 @ Multiplicands stored in r1 and r2
 multiply_754:
     and r3, r1, #0x80000000         @ Extract sign
-    and r4, r1, #0x80000000
+    and r4, r2, #0x80000000
 
     eor r0, r3, r4                  @ Find new sign
     ldr r9, =0x7F800000
-    and r3, r1, r8                  @ Extract exponents
+    and r3, r1, r9                  @ Extract exponents
     and r4, r2, r9
 
     mov r3, r3, lsr #23             @ Move to other side of decimal point
@@ -258,3 +258,6 @@ twos_complement:
     mvn r0, r0                      @ negate r0
     add r0, r0, #1                  @ add 1
     mov pc, lr                      @ Return to caller
+
+finished: 
+    nop
