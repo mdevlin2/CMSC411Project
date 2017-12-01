@@ -1,6 +1,6 @@
 .data
-cordic_ctab: .word 2097149, 1048575, 524287, 262143, 131071, 65535, 32767, 16383, 8191, 4095, 2047, 1023, 511, 255, 127, 63, 31, 15, 8, 4, 2, 1, 0
-cordic_1k: .word 0x26DD3B6A
+cordic_ctab: .word 0x4E490FDA, 0x4DED6338, 0x4D7ADBAF, 0x4CFEADD4 ,0x4C7FAADD, 0x4BFFEAAD, 0x4B7FFAAA, 0x4AFFFEAA, 0x4A7FFFA8, 0x49FFFFE8, 0x497FFFF0, 0x48FFFFE0, 0x487FFFC0, 0x47FFFF80, 0x477FFF00, 0x46FFFE00, 0x467FFC00, 0x45FFF800, 0x457FF000, 0x44FFE000, 0x447FC000, 0x43FF8000, 0x437F0000, 0x42FE0000, 0x427C0000, 0x41F80000, 0x41700000, 0x41000000, 0x40800000, 0x40000000, 0x3F800000, 0x00000000
+cordic_1k: .word 0x4E1B74ED
 MUL: .word 0x4E800000
 MULINV: .word 0x307FFFFF
 .L3: .word cordic_ctab
@@ -9,6 +9,8 @@ X: .word 0x00000000
 Y: .word 0x00000000
 Z: .word 0x00000000
 D: .word 0x00000000
+counter: .word 0x00000000
+loop_limit: .word 32
 ANS: .word 0x00000000
 theta: .word 0x41F00000             @ 30 degs to rad in ieee754
 deg_convert_const: .word 0x3C8EFA35
@@ -20,15 +22,15 @@ main:
     ldr r1, [r0]                    @ r1=30° in ieee754
     ldr r0, =deg_convert_const
     ldr r2, [r0]                    @ r2=(PI/180)
-    bl multiply_754                  @ Find 30° in rad
+    bl multiply_754                 @ Find 30° in rad
     ldr r1, =Z                      
     str r0, [r1]                    @ Store Z value
 
-    ldr r0, =MUL
-    ldr r1, [r0]                    @ r1=MUL constant for cordic
     ldr r0, =Z
-    ldr r2, [r0]                    @ r2=updated theta
-    bl multiply_754                  @ Find final theta value
+    ldr r1, [r0]                    @ r2=updated Z
+    ldr r0, =MUL
+    ldr r2, [r0]                    @ r1=MUL constant for cordic
+    bl multiply_754                 @ Find final Z value
     ldr r1, =Z
     str r0, [r1]                    @ Store updated Z value
 
@@ -41,69 +43,146 @@ main:
     mov r1, #0x00000000
     str r1, [r0]                    @ Store Y value
 
-    mov r0, #0                      @ Loop counter
-    mov r1, #22                     @ Loop limit
-
-    b loop
-
 loop:
     ldr r6, =Z
+    ldr r5, =0x80000000
     ldr r4, [r6]
-    mov r5, r4, lsr #23
-    sub r4, r5, #22
-    mov r5, r5, lsl #23
-    orr r4, r5, r4
-    ldr r6, =D
-    str r4, [r6]
-
-    ldr r6, =X
-    ldr r2, [r6]
-    mov r5, r2, lsr #23
-    sub r2, r5, r0
-    mov r5, r5, lsl #23
-    orr r2, r5, r2
-    eor r2, r2, r7
-    sub r2, r2, r7
-    ldr r8, [r6]
-    sub r8, r8, r2
-    str r8, [r6]
+    and r4, r4, r5
+    cmp r4, #0x00000000
+    beq pos
 
     ldr r6, =Y
-    ldr r3, [r6]
-    mov r5, r3, lsr #23
+    ldr r7, =X
+    ldr r0, =counter
+    ldr r0, [r0]
+    ldr r2, [r6]
+    ldr r8, =0x007FFFFF
+    ldr r9, =0x7F800000
+    and r4, r9, r2
+    and r6, r8, r2
+    mov r5, r4, lsr #23
     sub r5, r5, r0
     mov r5, r5, lsl #23
-    orr r3, r5, r3
-    eor r3, r3, r7
-    sub r3, r3, r7
-    ldr r8, [r6]
-    add r8, r8, r3
-    str r8, [r6]
+    orr r1, r5, r8
+    ldr r2, [r7]
+    bl addfloat
+    ldr r6, =X
+    str r0, [r6]
+
+    ldr r6, =X
+    ldr r7, =Y
+    ldr r0, =counter
+    ldr r0, [r0]
+    ldr r2, [r6]
+    ldr r8, =0x007FFFFF
+    ldr r9, =0x7F800000
+    and r4, r9, r2
+    and r6, r8, r2
+    mov r5, r4, lsr #23
+    sub r5, r5, r0
+    mov r5, r5, lsl #23
+    orr r2, r5, r6
+    ldr r1, [r7]
+    bl subfloat
+    ldr r6, =Y
+    str r0, [r6]
 
     ldr r6, =cordic_ctab
     ldr r3, =Z
-    mov r8, #4
-    mul r9, r8, r0
-    ldr r4, [r6, r9]
-    eor r4, r4, r7
-    sub r4, r4, r7
-    ldr r8, [r3]
-    sub r8, r8, r4
-    str r8, [r3]
-    
-    add r0, r0, #1
-    cmp r0, r1
-    blt loop
+    mov r8, #0
+    mov r9, #0
 
-    ldr r3, =Y
+find_offset:
+    add r8, r8, #4
+    add r9, r9, #1
+    ldr r1, =counter
+    ldr r1, [r1]
+    cmp r9, r1
+    blt find_offset
+
     ldr r1, [r3]
-    ldr r3, =MULINV
-    ldr r2, [r3]
-    bl multiply_754 
-    ldr r3, =ANS
+    ldr r2, [r6, r8]
+    bl subfloat
+    ldr r3, =Z
     str r0, [r3]
+
+    ldr r1, =loop_limit
+    ldr r2, =counter
+    ldr r3, [r1]
+    ldr r4, [r2]
+    add r4, r4, #1
+    cmp r4, r3
+    str r3, [r1]
+    str r4, [r2]
+    blt loop
     b finished
 
+pos:
+    ldr r6, =Y
+    ldr r7, =X
+    ldr r0, =counter
+    ldr r0, [r0]
+    ldr r2, [r6]
+    ldr r8, =0x007FFFFF
+    ldr r9, =0x7F800000
+    and r4, r9, r2
+    and r6, r8, r2
+    mov r5, r4, lsr #23
+    sub r5, r5, r0
+    mov r5, r5, lsl #23
+    orr r1, r5, r8
+    ldr r2, [r7]
+    bl subfloat
+    ldr r6, =X
+    str r0, [r6]
+
+    ldr r6, =X
+    ldr r7, =Y
+    ldr r0, =counter
+    ldr r0, [r0]
+    ldr r2, [r6]
+    ldr r8, =0x007FFFFF
+    ldr r9, =0x7F800000
+    and r4, r9, r2
+    and r6, r8, r2
+    mov r5, r4, lsr #23
+    sub r5, r5, r0
+    mov r5, r5, lsl #23
+    orr r2, r5, r6
+    ldr r1, [r7]
+    bl addfloat
+    ldr r6, =Y
+    str r0, [r6]
+
+    ldr r6, =cordic_ctab
+    ldr r3, =Z
+    mov r8, #0
+    mov r9, #0
+
+find_offset_pos:
+    add r8, r8, #4
+    add r9, r9, #1
+    ldr r1, =counter
+    ldr r1, [r1]
+    cmp r9, r1
+    blt find_offset
+
+    ldr r1, [r3]
+    ldr r2, [r6, r8]
+    bl subfloat
+    ldr r3, =Z
+    str r0, [r3]
+
+    ldr r1, =loop_limit
+    ldr r2, =counter
+    ldr r3, [r1]
+    ldr r4, [r2]
+    add r4, r4, #1
+    cmp r4, r3
+    str r3, [r1]
+    str r4, [r2]
+    blt loop
+    b finished
 
 @ Multiplicands stored in r1 and r2
 multiply_754:
@@ -173,8 +252,8 @@ done_mul:
 subfloat:
     ldr r10, =0x80000000
     eor r2, r2, r10                 @ Exclusive or r2 with 0x80000000 to toggle the sign bit
-    bl addfloat
-    swi 0x11
+    @bl addfloat
+    @mov pc, lr
 
 @ r0 = r1 + r2
 addfloat:
@@ -260,4 +339,6 @@ twos_complement:
     mov pc, lr                      @ Return to caller
 
 finished: 
-    nop
+    ldr r0, =Y
+    ldr r1, [r0]
+    ldr r0, =Y
