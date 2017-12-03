@@ -3,13 +3,16 @@ cordic_ctab: .word 0x4E490FDA, 0x4DED6338, 0x4D7ADBAF, 0x4CFEADD4 ,0x4C7FAADD, 0
 cordic_1k: .word 0x4E1B74ED
 MUL: .word 0x4E800000
 MULINV: .word 0x307FFFFF
+ONE: .word 0x3F800000
 X: .word 0x00000000
 Y: .word 0x00000000
 Z: .word 0x00000000
 TX: .word 0x00000000
 counter: .word 0x00000000
 loop_limit: .word 32
-ANS: .word 0x00000000
+COS: .word 0x00000000
+SIN: .word 0x00000000
+TAN: .word 0x00000000
 theta: .word 0x41F00000             @ 30 degs to rad in ieee754
 deg_convert_const: .word 0x4B8EFA2D
 
@@ -345,5 +348,25 @@ finished:
     ldr r2, =MULINV
     ldr r2, [r2]
     bl multiply_754
-    ldr r1, =ANS
+    ldr r1, =SIN
     str r0, [r1]
+
+    ldr r0, =X
+    ldr r1, [r0]
+    ldr r2, =MULINV
+    ldr r2, [r2]
+    bl multiply_754
+    ldr r1, =COS
+    str r0, [r1]
+
+    ldr r0, =ONE
+    ldr r1, [r0]
+    ldr r2, =COS
+    ldr r2, [r2]
+    bl multiply_754
+    mov r1, r0
+    ldr r2, =SIN
+    ldr r2, [r2]
+    bl multiply_754
+    ldr r2, =TAN
+    str r0, [r2]
