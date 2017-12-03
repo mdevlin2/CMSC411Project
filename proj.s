@@ -3,17 +3,15 @@ cordic_ctab: .word 0x4E490FDA, 0x4DED6338, 0x4D7ADBAF, 0x4CFEADD4 ,0x4C7FAADD, 0
 cordic_1k: .word 0x4E1B74ED
 MUL: .word 0x4E800000
 MULINV: .word 0x307FFFFF
-.L3: .word cordic_ctab
-.L4: .word 652032874
 X: .word 0x00000000
 Y: .word 0x00000000
 Z: .word 0x00000000
-D: .word 0x00000000
+TX: .word 0x00000000
 counter: .word 0x00000000
 loop_limit: .word 32
 ANS: .word 0x00000000
 theta: .word 0x41F00000             @ 30 degs to rad in ieee754
-deg_convert_const: .word 0x3C8EFA35
+deg_convert_const: .word 0x4B8EFA2D
 
 .text
 .global main
@@ -25,14 +23,6 @@ main:
     bl multiply_754                 @ Find 30° in rad
     ldr r1, =Z                      
     str r0, [r1]                    @ Store Z value
-
-    ldr r0, =Z
-    ldr r1, [r0]                    @ r2=updated Z
-    ldr r0, =MUL
-    ldr r2, [r0]                    @ r1=MUL constant for cordic
-    bl multiply_754                 @ Find final Z value
-    ldr r1, =Z
-    str r0, [r1]                    @ Store updated Z value
 
     ldr r0, =cordic_1k
     ldr r0, [r0]
@@ -63,10 +53,10 @@ loop:
     mov r5, r4, lsr #23
     sub r5, r5, r0
     mov r5, r5, lsl #23
-    orr r1, r5, r8
+    orr r1, r5, r6
     ldr r2, [r7]
     bl addfloat
-    ldr r6, =X
+    ldr r6, =TX
     str r0, [r6]
 
     ldr r6, =X
@@ -89,8 +79,8 @@ loop:
 
     ldr r6, =cordic_ctab
     ldr r3, =Z
-    mov r8, #0
-    mov r9, #0
+    mov r8, #-4
+    mov r9, #-1
 
 find_offset:
     add r8, r8, #4
@@ -102,7 +92,7 @@ find_offset:
 
     ldr r1, [r3]
     ldr r2, [r6, r8]
-    bl subfloat
+    bl addfloat
     ldr r3, =Z
     str r0, [r3]
 
@@ -111,6 +101,12 @@ find_offset:
     ldr r3, [r1]
     ldr r4, [r2]
     add r4, r4, #1
+
+    ldr r5, =TX
+    ldr r7, =X
+    ldr r6, [r5]
+    str r6, [r7]
+
     cmp r4, r3
     str r3, [r1]
     str r4, [r2]
@@ -130,10 +126,10 @@ pos:
     mov r5, r4, lsr #23
     sub r5, r5, r0
     mov r5, r5, lsl #23
-    orr r1, r5, r8
-    ldr r2, [r7]
+    orr r2, r5, r6
+    ldr r1, [r7]
     bl subfloat
-    ldr r6, =X
+    ldr r6, =TX
     str r0, [r6]
 
     ldr r6, =X
@@ -156,16 +152,15 @@ pos:
 
     ldr r6, =cordic_ctab
     ldr r3, =Z
-    mov r8, #0
-    mov r9, #0
-
+    mov r8, #-4
+    mov r9, #-1
 find_offset_pos:
     add r8, r8, #4
     add r9, r9, #1
     ldr r1, =counter
     ldr r1, [r1]
     cmp r9, r1
-    blt find_offset
+    blt find_offset_pos
 
     ldr r1, [r3]
     ldr r2, [r6, r8]
@@ -178,6 +173,12 @@ find_offset_pos:
     ldr r3, [r1]
     ldr r4, [r2]
     add r4, r4, #1
+
+    ldr r5, =TX
+    ldr r7, =X
+    ldr r6, [r5]
+    str r6, [r7]
+
     cmp r4, r3
     str r3, [r1]
     str r4, [r2]
@@ -341,4 +342,8 @@ twos_complement:
 finished: 
     ldr r0, =Y
     ldr r1, [r0]
-    ldr r0, =Y
+    ldr r2, =MULINV
+    ldr r2, [r2]
+    bl multiply_754
+    ldr r1, =ANS
+    str r0, [r1]

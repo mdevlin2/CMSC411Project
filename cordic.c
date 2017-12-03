@@ -32,7 +32,6 @@ void cordic(int theta, int *s, int *c, int n)
             tz = z - -1*(cordic_ctab[k]);
         }
         x = tx; y = ty; z = tz;
-        printf("k: %d, x: %d, y: %d, z: %d, d: %d, c: %d\n", k, x, y, z, d, cordic_ctab[k]);
     }  
     *c = x; *s = y;
 }
